@@ -17,7 +17,7 @@ hyperchat
 # this will create a hypercore file in your home directory for this name
 # from the chat interface you can enter any of the following commands
 ? >>>
-# :h or :help - prints out the commants the chat cli accepts
+# :h or :help - prints out the comments the chat cli accepts
 # :w or :whoami - logs out your address
 # :c [key] or :connect [key] - listens to conversation at key
 # :d [key] or :disconnect [key] - stops listnening to conversation at key
