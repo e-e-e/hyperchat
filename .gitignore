@@ -1,3 +1,4 @@
 node_modules/
 chats/
+remote-chats/
 *.log

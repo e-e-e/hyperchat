@@ -1,18 +1,27 @@
 const hypercore = require('hypercore')
 const hyperdiscovery = require('hyperdiscovery')
+const fs = require('fs')
+const path = require('path')
+const homedir = require('os').homedir()
+
+const remoteChatDirectory = path.resolve(homedir, './hyperchats/remote')
 
 class Listener {
-  constructor (key) {
+  constructor (key, receiver) {
     this.swarm = undefined
-    this.feed = hypercore(`./remote${key}`, key, { valueEncoding: 'json', sparse: true, live: true })
+    this.name = undefined
+    try {
+      fs.statSync(remoteChatDirectory)
+    } catch (e) {
+      fs.mkdirSync(remoteChatDirectory)
+    }
+    this.receiver = receiver
+    this.feed = hypercore(path.join(remoteChatDirectory, key), key, { valueEncoding: 'json', sparse: true, live: true })
     this.feed.on('ready', () => this.connect())
     this.feed.on('error', e => console.error('feed error:', e))
     this.lastVersion = undefined
     // start listening to append messages
-    this.feed.on('append', () => {
-      console.log('appended', this.feed.length)
-      // this._newData()
-    })
+    this.feed.on('append', this._newData.bind(this))
   }
 
   get key () {
@@ -23,19 +32,21 @@ class Listener {
     console.log('Listening to:', this.key)
     this.swarm = hyperdiscovery(this.feed)
     this.swarm.once('connection', () => {
-      console.log('version was', this.feed.length)
-      console.log('I am listening to someone!')
+      this.lastVersion = this.feed.length
+      this.receiver.emit('listening', { key: this.key })
+      this.feed.get(0, this._setName.bind(this))
       this._update()
     })
-    // this.feed.on('download', (i, data) => {
-    //   console.log('data', i, data.toString())
-    // })
+  }
+
+  _setName (err, data) {
+    if (err) throw err
+    this.name = data.name || this.key
   }
 
   _update () {
     this.feed.update(() => {
       this.lastVersion = this.feed.length
-      console.log('last version was', this.lastVersion)
       this._update()
     })
   }
@@ -44,19 +55,44 @@ class Listener {
     const last = this.lastVersion || 0
     const newest = this.feed.length
     if (newest > last) {
-      console.log('recived from', this.lastVersion, newest)
       this.lastVersion = newest
       this.feed.download({start: last, end: newest}, () => {
         for (var i = last; i < newest; i++) {
-          this.feed.get(i, {wait: false, valueEncoding: 'json'}, this._gotMessage.bind(this))
+          const index = i
+          this.feed.get(
+            index,
+            {wait: false, valueEncoding: 'json'},
+            (err, data) => this._gotMessage(err, data, index)
+          )
         }
       })
     }
   }
 
-  _gotMessage (err, data) {
+  _gotMessage (err, data, index) {
     if (err) throw err
-    console.log('new message', data)
+    if (data.msg) {
+      this.receiver.emit('message', {
+        name: this.name,
+        message: data.msg,
+        time: data.time,
+        index
+      })
+      this.receiver.heard(this.discoveryKey, index)
+    }
+    switch (data.status) {
+      case 'START':
+        this.receiver.emit('started', { name: this.name })
+        break
+      case 'END':
+        this.receiver.emit('ended', { name: this.name })
+        break
+      case 'HEARD':
+        const who = data.heard === this.discoveryKey ? 'you' : data.heard
+        this.receiver.emit('heard', {name: this.name, who, index: data.index})
+
+        break
+    }
   }
 
   disconnect (cb) {
@@ -69,24 +105,6 @@ class Listener {
     this.swarm.leave(this.feed.discoveryKey)
     this.swarm.destroy(cb)
     this.swarm = undefined
-  }
-
-  _listenStream () {
-    const stream = this.feed.replicate({
-      upload: true,
-      download: true,
-      live: true
-    })
-    // stream.on('close', function () {
-    //   console.log('Stream close')
-    // })
-    // stream.on('error', function (err) {
-    //   console.log('Replication error:', err.message)
-    // })
-    // stream.on('end', function () {
-    //   console.log('Replication stream ended')
-    // })
-    return stream
   }
 }
 

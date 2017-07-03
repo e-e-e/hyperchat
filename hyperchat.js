@@ -1,11 +1,23 @@
 const hypercore = require('hypercore')
 const hyperdiscovery = require('hyperdiscovery')
 const Listener = require('./listener')
+const fs = require('fs')
+const path = require('path')
+const events = require('events')
+const homedir = require('os').homedir()
 
-class Hyperchat {
+const chatsDirectory = path.resolve(homedir, './hyperchats')
+
+class Hyperchat extends events.EventEmitter {
   constructor (name) {
+    super()
     this.name = name
-    this.feed = hypercore(`./${name}`, { valueEncoding: 'json' })
+    try {
+      fs.statSync(chatsDirectory)
+    } catch (e) {
+      fs.mkdirSync(chatsDirectory)
+    }
+    this.feed = hypercore(path.join(chatsDirectory, name), { valueEncoding: 'json' })
     this.listeningTo = []
     this.ready = false
     this.feed.on('ready', () => this.connect())
@@ -17,25 +29,40 @@ class Hyperchat {
     return this.feed.key.toString('hex')
   }
 
+  get discoveryKey () {
+    return this.feed.discoveryKey.toString('hex')
+  }
+
   connect () {
-    // what if not new?
     this.feed.append({ time: Date.now(), name: this.name, status: 'START' }, (err) => {
       if (err) throw err
+      this.emit('ready')
       this.ready = true
-      console.log(this.name, 'now available on public key:', this.key)
       this.swarm = hyperdiscovery(this.feed)
-      this.swarm.once('connection', function () {
-        console.log('I connected to someone!')
-      })
+      this.swarm.once('connection', () => { this.emit('connection') })
     })
   }
 
   disconnect (cb) {
-    this.listeningTo.forEach((remote) => {
-      remote.disconnect()
-    })
-    if (this.swarm) {
-      this.feed.append({ time: Date.now(), name: this.name, status: 'END' }, () => this._destroy(cb))
+    const kill = () => {
+      if (count === 0 && this.swarm) {
+        this.feed.append({ time: Date.now(), name: this.name, status: 'END' }, () => {
+          setTimeout(() => this._destroy(cb), 40)
+        })
+      };
+    }
+    var count = this.listeningTo.length
+    if (count) {
+      this.listeningTo.forEach((remote) => {
+        this.emit('disconnecting', remote.key)
+        remote.disconnect(() => {
+          this.emit('disconnected', remote.key)
+          count--
+          kill()
+        })
+      })
+    } else {
+      kill()
     }
   }
 
@@ -47,8 +74,13 @@ class Hyperchat {
     }
   }
 
+  heard (discoveryKey, index) {
+    this.feed.append({ time: Date.now(), heard: discoveryKey, index, status: 'HEARD' })
+  }
+
   add (key) {
-    const remote = new Listener(key)
+    const remote = new Listener(key, this)
+    // attach listener events
     this.listeningTo.push(remote)
   }
 
@@ -66,24 +98,7 @@ class Hyperchat {
     this.swarm.leave(this.feed.discoveryKey)
     this.swarm.destroy(cb)
     this.swarm = undefined
-  }
-
-  _broadcastStream () {
-    const stream = this.feed.replicate({
-      upload: true,
-      download: false,
-      live: true
-    })
-    // stream.on('close', function () {
-    //   console.log('Stream close')
-    // })
-    // stream.on('error', function (err) {
-    //   console.log('Replication error:', err.message)
-    // })
-    // stream.on('end', function () {
-    //   console.log('Replication stream ended')
-    // })
-    return stream
+    this.emit('destroyed')
   }
 }
 
