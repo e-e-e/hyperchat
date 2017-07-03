@@ -1,5 +1,5 @@
 {
-  "name": "hyperchat",
+  "name": "@e-e-e/hyperchat",
   "version": "0.0.1",
   "description": "hypercore + chat",
   "main": "hyperchat.js",
@@ -19,7 +19,7 @@
     "discovery-swarm": "^4.4.0",
     "hypercore": "^6.6.3",
     "hyperdiscovery": "^6.0.4",
-    "inquirer": "^3.1.1",
+    "inquirer": "^3.1.1"
   },
   "devDependencies": {
     "eslint-config-standard": "^10.2.1",

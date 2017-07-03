@@ -8,7 +8,7 @@ There are two options.
 
 1. install globally to use from the command line as a chat client:
   ```bash
-  npm install -g hyperchat
+  npm install -g @e-e-e/hyperchat
   hyperchat
   # you will be promped to add a username
   ? What is your name? ...
@@ -24,11 +24,11 @@ There are two options.
 
 2. install and build your own chat app on top of hyperchat
   ```bash
-  npm i -S hyperchat
+  npm install @e-e-e/hyperchat --save
   ```
   and import in your project;
   ```js
-  var hyperchat = require('hyperchat')
+  var hyperchat = require('@e-e-e/hyperchat')
   var chat = new Hyperchat('username')
 
   // you can listen to chat events
