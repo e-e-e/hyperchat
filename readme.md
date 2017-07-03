@@ -57,4 +57,4 @@ There are two options.
 ## config
 
 At the moment there are no config options exposed.
-Chats are by default stored at the users home: `~/datchats`
+Chats are by default stored at the users home: `~/hyperchats`
