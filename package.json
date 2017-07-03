@@ -1,6 +1,6 @@
 {
   "name": "@e-e-e/hyperchat",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "hypercore + chat",
   "main": "hyperchat.js",
   "scripts": {
