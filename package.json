@@ -9,7 +9,7 @@
   "author": "Benjamin Forster",
   "license": "ISC",
   "bin": {
-    "hyperchat": "node ./bin/index.js"
+    "hyperchat": "./bin/index.js"
   },
   "repository": {
     "type": "git",
