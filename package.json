@@ -11,6 +11,10 @@
   "cli": {
     "hyperchat": "node ./bin/index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/e-e-e/hyperchat"
+  }
   "dependencies": {
     "discovery-swarm": "^4.4.0",
     "hypercore": "^6.6.3",
