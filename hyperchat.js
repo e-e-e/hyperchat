@@ -38,7 +38,21 @@ class Hyperchat extends events.EventEmitter {
       if (err) throw err
       this.emit('ready')
       this.ready = true
-      this.swarm = hyperdiscovery(this.feed)
+      const archive = this.feed
+      this.swarm = hyperdiscovery(this.feed, {
+        stream: function (peer) {
+          const stream = archive.replicate({
+            live: true,
+            upload: true,
+            download: true,
+            userData: archive.key
+          })
+          stream.on('handshake', () => {
+            console.log('HANDSHAKE RECIEVER', stream.remoteUserData.toString('hex'))
+          })
+          return stream
+        }
+      })
       this.swarm.once('connection', () => { this.emit('connection') })
     })
   }

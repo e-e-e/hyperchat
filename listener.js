@@ -30,7 +30,22 @@ class Listener {
 
   connect () {
     console.log('Listening to:', this.key)
-    this.swarm = hyperdiscovery(this.feed)
+    const archive = this.feed
+    const receiver = this.receiver.feed
+    this.swarm = hyperdiscovery(this.feed, {
+      stream: function (peer) {
+        const stream = archive.replicate({
+          live: true,
+          upload: true,
+          download: true,
+          userData: receiver.key
+        })
+        stream.on('handshake', () => {
+          console.log('HANDSHAKE LISTENER', stream.remoteUserData.toString('hex'))
+        })
+        return stream
+      }
+    })
     this.swarm.once('connection', () => {
       this.lastVersion = this.feed.length
       this.receiver.emit('listening', { key: this.key })
